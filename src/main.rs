@@ -1,15 +1,18 @@
 #![windows_subsystem = "windows"]
 
-use std::thread;
-use std::time::Duration;
+use std::{thread, time::Duration};
 
-use windows::core::*;
-use windows::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows::Win32::{
-    Foundation::*,
-    UI::{
-        Accessibility::*, Input::Ime::*, Input::KeyboardAndMouse::*, Shell::*,
-        WindowsAndMessaging::*,
+use windows::{
+    core::*,
+    Win32::{
+        Foundation::*,
+        System::LibraryLoader::GetModuleHandleW,
+        UI::{
+            Accessibility::*,
+            Input::{Ime::*, KeyboardAndMouse::*},
+            Shell::*,
+            WindowsAndMessaging::*,
+        },
     },
 };
 
@@ -28,14 +31,14 @@ unsafe extern "system" fn event_hook_callback(
     // Get the current keyboard layout
     let hkl = GetKeyboardLayout(thread_id);
 
-    // Check if the current IME status matches Chinese (0x804)
-    if ((hkl.0 as u32 & 0xffff) == 0x804) && (hwnd.0 != 0) {
+    // Check if the current IME status matches Chinese (0x804)~
+    if ((hkl.0 as u32 & 0xffff) == 0x804) && (hwnd.0 != std::ptr::null_mut()) {
         // Get the ime window handle
         let ime_hwnd = ImmGetDefaultIMEWnd(hwnd);
         // Switch the IME state
         println!("Chinese input method detected, forcing Chinese mode.");
         // Sometimes the message will miss if we don't sleep for a little while.
-        thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(50));
         SendMessageW(
             ime_hwnd,
             WM_IME_CONTROL,
@@ -58,7 +61,7 @@ fn add_tray_icon(hwnd: HWND) -> windows::core::Result<()> {
         hWnd: hwnd,
         uCallbackMessage: NOTIFYICONMESSAGE,
         hIcon: unsafe { LoadIconW(h_instance, PCWSTR(IDI_ICON1 as *const u16))? }, // Load the app icon
-        szTip: [0; 128],               // Tooltip text
+        szTip: [0; 128],                                                           // Tooltip text
         ..Default::default()
     };
 
@@ -75,14 +78,12 @@ fn add_tray_icon(hwnd: HWND) -> windows::core::Result<()> {
     Ok(())
 }
 
-
 unsafe extern "system" fn window_proc(
     hwnd: HWND,
     msg: u32,
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
-
     match msg {
         NOTIFYICONMESSAGE => match lparam.0 as u32 {
             WM_RBUTTONUP => {
@@ -95,7 +96,12 @@ unsafe extern "system" fn window_proc(
                     .encode_utf16()
                     .chain(std::iter::once(0))
                     .collect();
-                let _ = AppendMenuW(hmenu, MENU_ITEM_FLAGS(0), IDM_EXIT as usize, PCWSTR(menu_item_wstr.as_ptr()));
+                let _ = AppendMenuW(
+                    hmenu,
+                    MENU_ITEM_FLAGS(0),
+                    IDM_EXIT as usize,
+                    PCWSTR(menu_item_wstr.as_ptr()),
+                );
 
                 // Set the foreground window to the current window to ensure the menu closes properly
                 SetForegroundWindow(hwnd);
@@ -174,13 +180,13 @@ fn main() -> windows::core::Result<()> {
             None,
         );
 
-        if hwnd.0 == 0 {
+        if hwnd.as_ref().map_or(true, |h| h.0.is_null()) {
             // Handle error
             return Err(windows::core::Error::from_win32());
         }
 
         // Add the tray icon using 'hwnd'
-        add_tray_icon(hwnd)?;
+        add_tray_icon(hwnd.unwrap())?;
 
         // Set the hook
         let hook = SetWinEventHook(
@@ -194,7 +200,7 @@ fn main() -> windows::core::Result<()> {
         );
 
         // Check if the hook was set successfully
-        if hook.0 == 0 {
+        if hook.0 == std::ptr::null_mut() {
             // Handle the error if the hook is not set
             println!("Failed to set hook!");
             return Err(Error::from_win32());
@@ -202,7 +208,7 @@ fn main() -> windows::core::Result<()> {
 
         // Message loop
         let mut message = MSG::default();
-        while GetMessageW(&mut message, HWND(0), 0, 0).into() {
+        while GetMessageW(&mut message, HWND(std::ptr::null_mut()), 0, 0).into() {
             TranslateMessage(&message);
             DispatchMessageW(&message);
         }
