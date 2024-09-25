@@ -5,9 +5,10 @@
 
 ![Screenshot](assets/screenshot.png)
 
-# Install
-Download the latest release and run the executable. Run `copy_to_startup.bat` if needed.
-There's a tray icon to let you know it's running in the background.
+# 安装
+下载以后直接运行exe即可。需要开机启动可以执行 `copy_to_startup.bat`，这个脚本会把exe复制到startup目录。
+在运行的时候托盘会有一个图标，在图标上点击右键可以退出程序。
 
-# Build
+# 编译
+代码用Rust编写，安装Rust环境以后执行下面的命令
 `cargo build [--release]`
