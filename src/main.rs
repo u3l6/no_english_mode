@@ -31,38 +31,20 @@ unsafe extern "system" fn event_hook_callback(
     // Get the current keyboard layout
     let hkl = GetKeyboardLayout(thread_id);
 
-    // Check if the current IME status matches Chinese (0x804)
+    // Check if the current IME status matches Chinese (0x804)~
     if ((hkl.0 as u32 & 0xffff) == 0x804) && (hwnd.0 != std::ptr::null_mut()) {
         // Get the ime window handle
         let ime_hwnd = ImmGetDefaultIMEWnd(hwnd);
+        // Switch the IME state
         println!("Chinese input method detected, forcing Chinese mode.");
-
-        // Multiple attempts to ensure the IME state is switched
-        for _ in 0..3 {
+        for _ in 0..1 {
+            // Sometimes the message will miss if we don't sleep for a little while.
             thread::sleep(Duration::from_millis(50));
-
-            // First try to open IME
-            SendMessageW(
-                ime_hwnd,
-                WM_IME_CONTROL,
-                WPARAM(IMC_SETOPENSTATUS as usize),
-                LPARAM(1),
-            );
-
-            // Then set conversion mode to Chinese
             SendMessageW(
                 ime_hwnd,
                 WM_IME_CONTROL,
                 WPARAM(IMC_SETCONVERSIONMODE as usize),
-                LPARAM(1025), // Chinese mode
-            );
-
-            // Additional message to force IME refresh
-            SendMessageW(
-                hwnd,
-                WM_IME_NOTIFY,
-                WPARAM(IMN_SETCONVERSIONMODE as usize),
-                LPARAM(0),
+                LPARAM(1025), // Chinese
             );
         }
     }
